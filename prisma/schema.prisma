@@ -1,0 +1,395 @@
+// ----------------------------------------------------------------------------
+// GreenSteps – Prisma schema
+// Postgres + pgvector for RAG embeddings (Neon supported).
+// Run `npx prisma db push` after enabling the `vector` extension in Postgres:
+//   CREATE EXTENSION IF NOT EXISTS vector;
+// ----------------------------------------------------------------------------
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+// -------------------------------- ENUMS -------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum DietType {
+  VEGAN
+  VEGETARIAN
+  MIXED
+  HEAVY_MEAT
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+  CNG
+}
+
+enum ActivityCategory {
+  TRANSPORTATION
+  ENERGY
+  FOOD
+  SHOPPING
+  OTHER
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+enum ChallengeStatus {
+  UPCOMING
+  ACTIVE
+  ENDED
+}
+
+enum BadgeTier {
+  BEGINNER
+  WARRIOR
+  CHAMPION
+  HERO
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// -------------------------------- MODELS ------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  email         String   @unique
+  name          String?
+  imageUrl      String?
+  role          Role     @default(USER)
+  greenPoints   Int      @default(0)
+  carbonSaved   Float    @default(0) // kg CO2 saved (cumulative)
+  bannedAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  calculations  CarbonCalculation[]
+  activities    Activity[]
+  goals         Goal[]
+  challenges    ChallengeParticipant[]
+  conversations AIConversation[]
+  rewards       Reward[]
+  badges        UserBadge[]
+  notifications Notification[]
+
+  @@index([role])
+  @@index([greenPoints])
+}
+
+model CarbonCalculation {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Transportation
+  carMilesPerMonth        Float    @default(0)
+  fuelType                FuelType @default(PETROL)
+  publicTransportPerWeek  Float    @default(0)
+  flightsPerMonth         Int      @default(0)
+
+  // Energy
+  electricityKwhPerMonth  Float    @default(0)
+  acHoursPerDay           Float    @default(0)
+  renewablePct            Float    @default(0)
+
+  // Food
+  diet                    DietType @default(MIXED)
+
+  // Shopping
+  clothingPerMonth        Int      @default(0)
+  electronicsPerMonth     Int      @default(0)
+  onlineOrdersPerMonth    Int      @default(0)
+
+  // Output (kg CO2 / month)
+  transportationCo2       Float    @default(0)
+  energyCo2               Float    @default(0)
+  foodCo2                 Float    @default(0)
+  shoppingCo2             Float    @default(0)
+  totalCo2                Float    @default(0)
+  grade                   String   @default("C")
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model Activity {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    ActivityCategory
+  type        String           // "car", "bus", "electricity", "meal", "purchase"...
+  description String?
+  quantity    Float            // miles, kWh, meals, units...
+  unit        String           // "km", "kWh", "meals", "items"
+  co2Kg       Float            // computed emission in kg
+  loggedAt    DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, loggedAt])
+  @@index([category])
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  targetCo2   Float      // kg CO2 reduction target
+  currentCo2  Float      @default(0)
+  status      GoalStatus @default(ACTIVE)
+  startDate   DateTime   @default(now())
+  endDate     DateTime
+  reward      Int        @default(50)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId, status])
+}
+
+model Challenge {
+  id              String                 @id @default(cuid())
+  slug            String                 @unique
+  title           String
+  description     String
+  imageUrl        String?
+  rules           String?
+  category        ActivityCategory       @default(OTHER)
+  targetCo2Saved  Float                  @default(0)
+  rewardPoints    Int                    @default(100)
+  status          ChallengeStatus        @default(UPCOMING)
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  participants    ChallengeParticipant[]
+
+  @@index([status, startDate])
+}
+
+model ChallengeParticipant {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId   String
+  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime  @default(now())
+  co2Saved      Float     @default(0)
+  completed     Boolean   @default(false)
+  rank          Int?
+
+  @@unique([userId, challengeId])
+  @@index([challengeId, co2Saved])
+}
+
+model AIConversation {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String       @default("New conversation")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  messages  AIMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AIMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  conversation   AIConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String          @db.Text
+  citations      Json?           // [{ documentId, title, snippet, score }]
+  createdAt      DateTime        @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Document {
+  id          String      @id @default(cuid())
+  title       String
+  source      String?     // URL, filename, or note
+  category    String      @default("general")
+  content     String      @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  embeddings  Embedding[]
+
+  @@index([category])
+}
+
+model Embedding {
+  id         String                       @id @default(cuid())
+  documentId String
+  document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  content    String                       @db.Text
+  // 768-dim vector — matches Gemini `text-embedding-004`
+  embedding  Unsupported("vector(768)")?
+
+  @@index([documentId])
+}
+
+model Reward {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  points    Int
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Badge {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  description String
+  tier        BadgeTier    @default(BEGINNER)
+  iconUrl     String?
+  threshold   Int          @default(0) // green points or CO2 saved
+  createdAt   DateTime     @default(now())
+
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// --- Awareness layer ---------------------------------------------------------
+
+// Anonymous (or logged-in) public footprint calculation with a shareable slug.
+// Powers /discover → /result/[slug] flow without requiring auth.
+model PublicCalculation {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String?           // optional display name on result card
+  citySlug          String?
+  countryCode       String   @default("IN")
+
+  // Inputs (mirrors CarbonCalculation but optional)
+  carKmPerMonth     Float    @default(0)
+  fuelType          FuelType @default(PETROL)
+  publicTransportPerWeek Float @default(0)
+  flightsPerYear    Int      @default(0)
+  electricityKwhPerMonth Float @default(0)
+  acHoursPerDay     Float    @default(0)
+  renewablePct      Float    @default(0)
+  diet              DietType @default(MIXED)
+  shoppingScore     Int      @default(2)  // 0..5 lifestyle scale
+
+  // Outputs
+  transportationCo2 Float    @default(0)
+  energyCo2         Float    @default(0)
+  foodCo2           Float    @default(0)
+  shoppingCo2       Float    @default(0)
+  totalCo2          Float    @default(0)
+  grade             String   @default("C")
+
+  createdAt         DateTime @default(now())
+  viewCount         Int      @default(0)
+  shareCount        Int      @default(0)
+
+  @@index([citySlug])
+  @@index([createdAt])
+}
+
+// Public pledge wall — name + city + commitment. No auth required.
+model Pledge {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  message   String   @db.Text
+  category  String   @default("general") // transport | energy | food | shopping | general
+  estCo2    Float    @default(0)         // estimated kg CO2 saved per month if kept
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([category])
+}
+
+// Audit log — admin actions, security events, abuse signals.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?           // userId or null for anonymous
+  action    String            // "ban_user", "delete_pledge", "rate_limited", ...
+  target    String?           // affected resource id
+  ip        String?
+  userAgent String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([actorId])
+}
+
+// City / region with localized emission factors and civic stats.
+model City {
+  slug              String   @id
+  name              String
+  countryCode       String   @default("IN")
+  population        Int      @default(0)
+  gridFactor        Float    @default(0.82) // kg CO₂ / kWh
+  renewableSharePct Float    @default(22)
+  percapitaTonsYr   Float    @default(1.9)  // tons CO₂ / capita / yr (national avg)
+  transportShare    Float    @default(0.13)
+  energyShare       Float    @default(0.39)
+  industryShare     Float    @default(0.25)
+  agricultureShare  Float    @default(0.18)
+  topAction         String   @default("Switch to LED + efficient appliances")
+  context           String   @db.Text @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

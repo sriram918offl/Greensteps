@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 150 30% 99%;
+    --foreground: 160 20% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 160 20% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 20% 12%;
+    --primary: 158 65% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 152 25% 95%;
+    --secondary-foreground: 160 20% 12%;
+    --muted: 150 20% 96%;
+    --muted-foreground: 160 10% 40%;
+    --accent: 152 60% 92%;
+    --accent-foreground: 160 30% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 150 15% 90%;
+    --input: 150 15% 90%;
+    --ring: 158 65% 38%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 160 30% 6%;
+    --foreground: 150 15% 96%;
+    --card: 160 30% 9%;
+    --card-foreground: 150 15% 96%;
+    --popover: 160 30% 9%;
+    --popover-foreground: 150 15% 96%;
+    --primary: 158 65% 48%;
+    --primary-foreground: 160 30% 6%;
+    --secondary: 160 20% 14%;
+    --secondary-foreground: 150 15% 96%;
+    --muted: 160 20% 14%;
+    --muted-foreground: 150 10% 65%;
+    --accent: 160 25% 18%;
+    --accent-foreground: 150 15% 96%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 160 20% 18%;
+    --input: 160 20% 18%;
+    --ring: 158 65% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-[0_8px_30px_rgba(16,185,129,0.08)];
+  }
+
+  .glass-strong {
+    @apply bg-white/80 dark:bg-white/[0.07] backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_10px_40px_rgba(16,185,129,0.12)];
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-dark {
+    @apply bg-gradient-to-r from-emerald-300 via-emerald-200 to-teal-300 bg-clip-text text-transparent;
+  }
+
+  .hero-gradient {
+    background:
+      radial-gradient(60% 60% at 50% 0%, rgba(16, 185, 129, 0.20) 0%, transparent 60%),
+      radial-gradient(40% 40% at 100% 30%, rgba(20, 184, 166, 0.18) 0%, transparent 60%),
+      radial-gradient(40% 40% at 0% 50%, rgba(110, 231, 183, 0.16) 0%, transparent 60%);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(16, 185, 129, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16, 185, 129, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ───────────── View-transition page navigations ─────────────
+   Wired via `next-view-transitions` at the root layout. Click a <Link>
+   from "@/components/ui/link" and the browser performs a snapshot
+   compositor handoff using these keyframes — GPU-accelerated, no
+   JS animation cost. Falls back to a hard cut in unsupported browsers. */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+  /* Render the two snapshots stacked so cross-fade reads cleanly */
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation-name: vt-fade-out, vt-slide-out;
+}
+
+::view-transition-new(root) {
+  animation-name: vt-fade-in, vt-slide-in;
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+@keyframes vt-slide-out {
+  to { transform: translateY(-6px); }
+}
+@keyframes vt-slide-in {
+  from { transform: translateY(8px); }
+}
+
+/* Respect user motion preference — instant hard cut, no animation. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Smoother scrolling for in-page anchor jumps */
+html { scroll-behavior: smooth; }
+
+/* Subtle GPU compositing hint for Framer-animated cards (reduces jank) */
+.glass, .glass-strong { will-change: transform; }
