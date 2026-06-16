@@ -62,7 +62,7 @@ export function StorySection({
   });
 
   return (
-    <section ref={ref} className="relative py-24 md:py-32">
+    <section ref={ref} className="relative py-16 md:py-24 lg:py-32">
       {/* Off-screen accent glow */}
       <div
         aria-hidden
@@ -76,19 +76,21 @@ export function StorySection({
       <div className="container mx-auto px-4">
         <div
           className={cn(
-            "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
+            // Tablets (md, 768+) get the two-column layout so 5 chapters
+            // don't become 10 tall stacked rows.
+            "grid items-center gap-8 md:grid-cols-2 md:gap-12 lg:gap-16",
             // Put the visual on the LEFT when side="left", which means the
             // text (first DOM child) needs to be visually in column 2.
-            visualOnLeft && "lg:[&>*:first-child]:order-2",
+            visualOnLeft && "md:[&>*:first-child]:order-2",
           )}
         >
           {/* ─── Text column ─────────────────────────────────────────────── */}
           <div
             className={cn(
               "max-w-xl space-y-5 text-left",
-              // When the text sits in the right column on desktop, hug the
+              // When the text sits in the right column (>= md), hug the
               // right edge so the block lines up with the visual.
-              _textIsRight && "lg:ml-auto",
+              _textIsRight && "md:ml-auto",
             )}
           >
             {/* Chapter mark */}
@@ -112,7 +114,8 @@ export function StorySection({
             {/* Headline */}
             <motion.h2
               {...revealUp(0.16)}
-              className="text-balance text-3xl font-bold leading-[1.15] tracking-tight md:text-4xl lg:text-[42px]"
+              // Cap the size growth so tablets in landscape don't get unreadably big.
+              className="text-balance text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl md:text-[32px] lg:text-[42px]"
               style={{ textWrap: "balance" }}
             >
               &ldquo;{quote}&rdquo;

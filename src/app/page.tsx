@@ -46,7 +46,7 @@ export default function LandingPage() {
             <Leaf className="mr-1.5 h-3 w-3" /> Carbon Footprint Awareness Platform
           </Badge>
 
-          <h1 className="mt-6 max-w-5xl text-balance text-4xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl lg:text-[68px] [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]">
+          <h1 className="mt-5 max-w-5xl text-balance text-[28px] font-bold leading-[1.08] tracking-tight text-white sm:text-4xl md:text-6xl lg:text-[68px] [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]">
             Every Step Leaves a Mark.{" "}
             <br className="hidden sm:block" />
             <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-transparent">
@@ -54,17 +54,17 @@ export default function LandingPage() {
             </span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-balance text-base text-white/85 md:text-lg [text-shadow:0_1px_12px_rgba(0,0,0,0.4)]">
+          <p className="mt-5 max-w-2xl text-balance text-sm text-white/85 sm:text-base md:text-lg [text-shadow:0_1px_12px_rgba(0,0,0,0.4)]">
             Track, understand, and reduce your carbon footprint through
             awareness-driven insights and sustainable actions.
           </p>
 
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-7 flex w-full max-w-md flex-col items-stretch gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:justify-center">
             <Button
               asChild
-              size="xl"
+              size="lg"
               variant="gradient"
-              className="rounded-full shadow-2xl shadow-emerald-500/50"
+              className="rounded-full shadow-2xl shadow-emerald-500/50 sm:size-xl"
             >
               <Link href="/discover">
                 Calculate My Footprint <ArrowRight className="h-5 w-5" />
@@ -80,7 +80,11 @@ export default function LandingPage() {
             </Button>
           </div>
 
-          <ScrollIndicator label="Scroll to continue the story" />
+          {/* Scroll cue is decorative — hide on the smallest viewports
+              where it steals vertical room from the CTAs. */}
+          <div className="hidden sm:block">
+            <ScrollIndicator label="Scroll to continue the story" />
+          </div>
         </HeroScene>
 
         {/* SCENE 1 — Quote (20% → 38%) */}
@@ -298,7 +302,7 @@ export default function LandingPage() {
         <div className="container relative mx-auto px-4 text-center text-white">
           <Reveal>
             <Globe className="mx-auto h-12 w-12" />
-            <h2 className="mt-6 text-balance text-5xl font-bold tracking-tight md:text-7xl">
+            <h2 className="mt-6 text-balance text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
               Your Footprint Matters.
             </h2>
           </Reveal>

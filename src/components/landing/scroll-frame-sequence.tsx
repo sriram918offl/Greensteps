@@ -66,11 +66,14 @@ export function ScrollOverlay({
     [0.96, 1, 1, 0.96],
   );
 
+  // Mobile + tablet always centered for readability — only switch to
+  // edge-aligned at lg+ where the viewport is wide enough to make the side
+  // positioning feel intentional rather than ragged.
   const align =
     side === "left"
-      ? "items-start text-left lg:pl-[7vw]"
+      ? "items-center text-center lg:items-start lg:text-left lg:pl-[7vw]"
       : side === "right"
-        ? "items-end text-right lg:pr-[7vw]"
+        ? "items-center text-center lg:items-end lg:text-right lg:pr-[7vw]"
         : "items-center text-center";
 
   return (
@@ -192,11 +195,26 @@ export function QuoteScrollSection({
       return;
     }
 
+    // ─── Mobile / tablet tuning ──────────────────────────────────────
+    // 1) Use 100svh (small viewport) so address-bar collapse on iOS / Android
+    //    doesn't yank the pin's end position mid-scroll.
+    // 2) Trim scrollLength on narrow screens so the pin doesn't drag forever —
+    //    users get to the storyline content faster.
+    // 3) `pinType: "fixed"` is more reliable than transform-based pinning on
+    //    mobile WebKit where layout shifts can desync the sticky element.
+    const computeLength = () => {
+      const w = window.innerWidth;
+      if (w < 640) return Math.min(scrollLength, 3);  // phones: short pin
+      if (w < 1024) return Math.min(scrollLength, 4); // tablets
+      return scrollLength;
+    };
+
     const trigger = ScrollTrigger.create({
       trigger: wrap,
       start: "top top",
-      end: `+=${scrollLength * window.innerHeight}`,
+      end: () => `+=${computeLength() * window.innerHeight}`,
       pin: sticky,
+      pinType: "fixed",
       anticipatePin: 1,
       scrub: 0.6,
       onUpdate: (self) => progress.set(self.progress),
@@ -211,7 +229,9 @@ export function QuoteScrollSection({
       <div
         ref={wrapRef}
         className="relative"
-        style={{ height: `${(scrollLength + 1) * 100}vh` }}
+        // Use svh so the wrap height stays stable as mobile chrome shows/hides.
+        // Add 1 extra viewport for the pin's exit phase.
+        style={{ height: `${(scrollLength + 1) * 100}svh` }}
         aria-label={ariaLabel}
         role="region"
       >
