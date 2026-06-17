@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-// Refresh stats every 30 seconds — cheap enough for landing, fresh enough to feel live.
-export const revalidate = 30;
+// Force dynamic — without this Next tries to PRERENDER the response at
+// build time, which hits the DB and fails if Neon is in a cold-start
+// or build-side networking is restricted. The route is cheap so we
+// just render on each request + use Cache-Control headers below for
+// CDN-level reuse.
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [calcSum, pledgeSum, cityCount, pledgeCount] = await Promise.all([
