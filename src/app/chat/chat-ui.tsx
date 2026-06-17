@@ -32,6 +32,9 @@ export function ChatUI() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  // Tracks the index of the message that's *actively* streaming so we
+  // can show a "Generating answer…" indicator just for it.
+  const [streamingIndex, setStreamingIndex] = React.useState<number | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -43,7 +46,13 @@ export function ChatUI() {
     if (!message || loading) return;
     setInput("");
     setLoading(true);
-    setMessages((m) => [...m, { role: "user", content: message }, { role: "assistant", content: "" }]);
+    let assistantIdx = -1;
+    setMessages((m) => {
+      const next = [...m, { role: "user" as const, content: message }, { role: "assistant" as const, content: "" }];
+      assistantIdx = next.length - 1;
+      setStreamingIndex(assistantIdx);
+      return next;
+    });
 
     try {
       const res = await fetch("/api/chat/stream", {
@@ -57,19 +66,19 @@ export function ChatUI() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let citations: Citation[] | undefined;
       let metadataParsed = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
+
         if (!metadataParsed) {
           const nl = buffer.indexOf("\n");
           if (nl >= 0) {
             try {
               const meta = JSON.parse(buffer.slice(0, nl));
-              citations = meta.citations;
+              const citations: Citation[] = meta.citations ?? [];
               setMessages((m) => {
                 const copy = [...m];
                 copy[copy.length - 1] = { ...copy[copy.length - 1], citations };
@@ -84,13 +93,19 @@ export function ChatUI() {
             continue;
           }
         }
-        setMessages((m) => {
-          const copy = [...m];
-          const last = copy[copy.length - 1];
-          copy[copy.length - 1] = { ...last, content: last.content + buffer };
-          return copy;
-        });
-        buffer = "";
+
+        if (buffer.length > 0) {
+          // Capture buffer in a const so the functional updater sees a
+          // stable value (avoids React-strict-mode double-apply doubling).
+          const chunk = buffer;
+          buffer = "";
+          setMessages((m) => {
+            const copy = [...m];
+            const last = copy[copy.length - 1];
+            copy[copy.length - 1] = { ...last, content: last.content + chunk };
+            return copy;
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -105,6 +120,7 @@ export function ChatUI() {
       });
     } finally {
       setLoading(false);
+      setStreamingIndex(null);
     }
   }
 
@@ -139,43 +155,95 @@ export function ChatUI() {
           ) : (
             <div className="space-y-5">
               <AnimatePresence>
-                {messages.map((m, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-3"
-                  >
-                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
-                      m.role === "user" ? "bg-emerald-500/10 text-emerald-700" : "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
-                    }`}>
-                      {m.role === "user" ? <User2 className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-muted-foreground">
-                        {m.role === "user" ? "You" : "GreenSteps Assistant"}
-                      </p>
-                      <div className="prose prose-sm prose-emerald mt-1 max-w-none dark:prose-invert">
-                        {m.content || (loading && i === messages.length - 1 ? <Loader2 className="h-4 w-4 animate-spin" /> : null)}
+                {messages.map((m, i) => {
+                  const isStreamingHere = streamingIndex === i;
+                  const hasCitations = !!m.citations && m.citations.length > 0;
+                  const hasContent = m.content.trim().length > 0;
+
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex gap-3"
+                    >
+                      <div
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+                          m.role === "user"
+                            ? "bg-emerald-500/10 text-emerald-700"
+                            : "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
+                        }`}
+                      >
+                        {m.role === "user" ? <User2 className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                       </div>
-                      {m.citations && m.citations.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          <p className="text-xs font-semibold text-muted-foreground">Sources</p>
-                          <ul className="space-y-1">
-                            {m.citations.map((c) => (
-                              <li key={c.index} className="text-xs">
-                                <Badge variant="secondary" className="mr-1">[{c.index}]</Badge>
-                                <span className="font-medium">{c.title}</span>
-                                {c.source && <span className="text-muted-foreground"> · {c.source}</span>}
-                                <p className="ml-1 mt-0.5 text-muted-foreground">{c.snippet}</p>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          {m.role === "user" ? "You" : "GreenSteps Assistant"}
+                        </p>
+
+                        {/* User messages render inline; assistant messages get the
+                            citations-then-answer layout. */}
+                        {m.role === "user" ? (
+                          <p className="mt-1 text-sm leading-relaxed">{m.content}</p>
+                        ) : (
+                          <>
+                            {/* SOURCES FIRST — they arrive before the streamed answer.
+                                If we already have citations but no content yet, this
+                                signals to the user that we're working on it. */}
+                            {hasCitations && (
+                              <div className="mt-2">
+                                <p className="text-xs font-semibold text-muted-foreground">
+                                  Sources
+                                </p>
+                                <ul className="mt-1.5 space-y-1.5">
+                                  {m.citations!.map((c) => (
+                                    <li key={c.index} className="text-xs leading-snug">
+                                      <Badge variant="secondary" className="mr-1.5 align-middle">
+                                        [{c.index}]
+                                      </Badge>
+                                      <span className="font-medium">{c.title}</span>
+                                      {c.source && (
+                                        <span className="text-muted-foreground"> · {c.source}</span>
+                                      )}
+                                      <p className="ml-1 mt-0.5 text-muted-foreground">
+                                        {c.snippet}
+                                      </p>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* ANSWER STREAMS BELOW THE SOURCES.
+                                While the stream is active and we have no text yet,
+                                show a clear "Generating answer…" indicator so the
+                                user knows something is coming. As soon as the first
+                                token arrives, this is replaced with the running text. */}
+                            <div className="mt-4">
+                              {!hasContent && isStreamingHere ? (
+                                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Generating answer from sources…</span>
+                                </div>
+                              ) : (
+                                <div className="prose prose-sm prose-emerald max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
+                                  {m.content}
+                                  {/* Blinking caret while still streaming */}
+                                  {isStreamingHere && hasContent && (
+                                    <span
+                                      aria-hidden
+                                      className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-emerald-500"
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           )}

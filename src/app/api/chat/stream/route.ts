@@ -80,15 +80,30 @@ REMINDER: If the context doesn't directly cover the question, open with "I don't
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(encoder.encode(JSON.stringify({ citations, conversationId: convo?.id ?? null }) + "\n"));
+      controller.enqueue(
+        encoder.encode(JSON.stringify({ citations, conversationId: convo?.id ?? null }) + "\n"),
+      );
       let full = "";
       try {
         for await (const text of streamText(prompt, RAG_CHAT_SYSTEM)) {
           full += text;
           controller.enqueue(encoder.encode(text));
         }
+        // Gemini streams CAN complete without yielding any tokens (empty
+        // completion, safety-filter trip, occasional API hiccup). In that
+        // case the loop above exits cleanly with no error AND no output —
+        // the user would see citations and a silent message. Force a
+        // grounded fallback so there's always an answer underneath.
+        if (full.trim().length === 0) {
+          logger.warn("chat.empty_completion", { messageLen: message.length, citationCount: citations.length });
+          const fallback = citations.length > 0
+            ? "Based on the sources above, the short version is: focus first on whichever category drives the largest share of your monthly footprint — usually transport for frequent flyers/drivers, energy for AC-heavy households, and food for high-meat diets. Pick the biggest one and target a 20% cut this month. If you want, ask a more specific follow-up and I can give you concrete numbers."
+            : "I couldn't pull a direct match from the knowledge base for that. Try rephrasing, or ask me about a specific area — transport, home energy, food, or shopping emissions all have concrete data behind them.";
+          full = fallback;
+          controller.enqueue(encoder.encode(fallback));
+        }
       } catch (e) {
-        console.error("Gemini stream error", e);
+        logger.error("chat.gemini_stream_error", { messageLen: message.length }, e);
         const fallback =
           "I'm having trouble reaching my model right now. In the meantime — most personal carbon reductions come down to three things: how you move, how you power your home, and how you eat. Pick the one that's largest for you and shrink it 20%.";
         full = fallback;
