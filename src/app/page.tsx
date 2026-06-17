@@ -10,7 +10,7 @@ import {
   HeroScene,
   ScrollOverlay,
 } from "@/components/landing/scroll-frame-sequence";
-import { HeroTransition } from "@/components/landing/hero-transition";
+import { AmbientBackdrop } from "@/components/landing/ambient-backdrop";
 import { ScrollIndicator } from "@/components/landing/scroll-indicator";
 import { StorySection } from "@/components/landing/story-section";
 import {
@@ -26,7 +26,12 @@ import { Reveal } from "@/components/fx/reveal";
 
 export default function LandingPage() {
   return (
-    <main className="relative bg-background">
+    // Force dark CSS variables for the entire landing — cinema-mode page.
+    // Inner app pages still respect the user's theme preference; only this
+    // marketing surface commits to the dark eco-tech aesthetic.
+    <main className="dark relative bg-slate-950 text-slate-100">
+      {/* Persistent atmosphere — fixed behind everything. */}
+      <AmbientBackdrop />
       <IntroSplash />
       <SiteHeader />
 
@@ -122,23 +127,25 @@ export default function LandingPage() {
         />
       </QuoteScrollSection>
 
-      {/* ─── HERO → STORY TRANSITION ─────────────────────────────────────
-          Bridges the dark pinned hero into the rest of the page so the
-          unpin doesn't feel like a hard cut. ~44vh of vertical gradient +
-          drifting leaves that carry the eye across the seam. */}
-      <HeroTransition />
+      {/* HeroTransition removed — the AmbientBackdrop is the same colour
+          as the hero's interior, so unpinning is naturally seamless.
+          No gradient bridge needed. */}
 
-      {/* ─── PRODUCT — 5 feature sections (untouched) ─────────────────── */}
-      <section className="relative">
-        <div className="container mx-auto max-w-5xl px-4 pt-8 text-center">
+      {/* ─── PRODUCT — 5 feature sections.
+          Section bg is transparent. The ambient backdrop fills behind it. */}
+      <section className="relative pt-24">
+        <div className="container mx-auto max-w-5xl px-4 text-center">
           <Reveal>
-            <Badge variant="success" className="rounded-full px-3 py-1">
+            <Badge
+              variant="success"
+              className="rounded-full border-white/10 bg-emerald-500/15 px-3 py-1 text-emerald-100 backdrop-blur"
+            >
               <Sparkles className="mr-1.5 h-3 w-3" /> What you get
             </Badge>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
               The platform, end to end
             </h2>
-            <p className="mt-3 text-balance text-muted-foreground md:text-lg">
+            <p className="mt-3 text-balance text-white/65 md:text-lg">
               Five tools that turn awareness into measurable progress.
             </p>
           </Reveal>
@@ -292,12 +299,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FINAL CTA (untouched) ───────────────────────────────────── */}
-      <section className="relative overflow-hidden py-32">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-700" />
-        <div className="absolute inset-0 -z-10 grid-bg opacity-30" />
-        <div className="absolute -top-24 left-1/4 -z-10 h-72 w-72 rounded-full bg-emerald-300/30 blur-3xl" />
-        <div className="absolute -bottom-24 right-1/4 -z-10 h-72 w-72 rounded-full bg-teal-300/30 blur-3xl" />
+      {/* ─── FINAL CTA — softer surface so the ambient backdrop
+          continues underneath instead of being replaced by a solid block. */}
+      <section className="relative overflow-hidden py-28 md:py-32">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-emerald-700/35 via-emerald-800/30 to-teal-700/35 backdrop-blur-md" />
+        <div className="absolute -top-24 left-1/4 -z-10 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="absolute -bottom-24 right-1/4 -z-10 h-72 w-72 rounded-full bg-teal-300/20 blur-3xl" />
+        {/* Top + bottom hairlines act as the section's "edges" without a
+            hard boundary — same trick as the transformation card. */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-300/30 to-transparent" />
 
         <div className="container relative mx-auto px-4 text-center text-white">
           <Reveal>

@@ -63,15 +63,10 @@ export function StorySection({
 
   return (
     <section ref={ref} className="cv-auto relative py-16 md:py-24 lg:py-32">
-      {/* Off-screen accent glow */}
-      <div
-        aria-hidden
-        className={cn(
-          "absolute -z-10 h-[60vmin] w-[60vmin] rounded-full blur-3xl",
-          a.glow,
-          visualOnLeft ? "left-[-20vmin] top-1/4" : "right-[-20vmin] top-1/4",
-        )}
-      />
+      {/* No section-level accent glow — the global AmbientBackdrop already
+          carries the atmosphere. A second glow per chapter would compete
+          with the backdrop's orbs and break the "one continuous experience"
+          read. The accent colour now lives in the chapter mark only. */}
 
       <div className="container mx-auto px-4">
         <div

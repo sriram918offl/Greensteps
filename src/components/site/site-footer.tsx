@@ -3,7 +3,7 @@ import { Github, Leaf } from "lucide-react";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-background">
+    <footer className="relative border-t border-white/10 bg-transparent backdrop-blur-md">
       <div className="container mx-auto py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">

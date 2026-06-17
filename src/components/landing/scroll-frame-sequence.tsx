@@ -4,7 +4,6 @@ import { motion, useMotionValue, useTransform, MotionValue } from "framer-motion
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
 import { cn } from "@/lib/utils";
-import { FloatingLeaves } from "./floating-leaves";
 import { useLowPower } from "@/components/fx/use-media";
 
 if (typeof window !== "undefined") {
@@ -245,73 +244,36 @@ export function QuoteScrollSection({
           ref={stickyRef}
           className="sticky top-0 flex h-[100svh] w-full items-center justify-center overflow-hidden"
         >
-          {/* L1 — deep emerald base */}
-          <div className="absolute inset-0 -z-50 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950" />
+          {/* The full ambient backdrop lives globally as <AmbientBackdrop />
+              (fixed-position behind the whole page). We only render the
+              section-specific overlays here so the quote text always reads
+              against a slightly-darker centre + softer edges. */}
 
-          {/* L2 — orbs. On desktop they drift with scroll progress; on
-              low-power devices they're static + use a smaller blur kernel
-              so the GPU isn't burning ~3 huge offscreen surfaces a frame. */}
-          {lowPower ? (
-            <div aria-hidden className="absolute inset-0 -z-40 overflow-hidden">
-              <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/20 blur-3xl" />
-              <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/20 blur-3xl" />
-              <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/18 blur-3xl" />
-            </div>
-          ) : (
+          {/* Pin-tied parallax orbs — these are NOT in the global backdrop
+              because their drift is tied to the pinned scroll progress
+              (not the document scroll). Gives the hero a richer feel during
+              its 5-vh pin window. Desktop only. */}
+          {!lowPower && (
             <motion.div
               aria-hidden
-              className="absolute inset-0 -z-40 overflow-hidden"
+              className="absolute inset-0 overflow-hidden will-change-transform"
               style={{ x: orbX, y: orbY }}
             >
-              <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/25 blur-[120px]" />
-              <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/25 blur-[120px]" />
-              <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/22 blur-[110px]" />
+              <div className="absolute left-[18%] top-[22%] h-[44vmin] w-[44vmin] rounded-full bg-emerald-400/18 blur-[100px]" />
+              <div className="absolute right-[14%] top-[60%] h-[36vmin] w-[36vmin] rounded-full bg-teal-300/16 blur-[100px]" />
             </motion.div>
           )}
 
-          {/* L3 — dot grid for tactile depth (cheap, kept everywhere) */}
+          {/* Soft radial vignette: clear at centre for the quote, gentle
+              dimming at edges so detail in the global backdrop doesn't
+              compete with the headline. */}
           <div
-            className="absolute inset-0 -z-30 opacity-[0.12]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, rgba(167, 243, 208, 0.6) 1px, transparent 0)",
-              backgroundSize: "26px 26px",
-              maskImage: "radial-gradient(circle at center, black 40%, transparent 78%)",
-              WebkitMaskImage: "radial-gradient(circle at center, black 40%, transparent 78%)",
-            }}
             aria-hidden
-          />
-
-          {/* L4 — rotating conic light rays. Single biggest GPU cost on
-              this page: 160vmax² surface + gradient + per-frame rotate
-              repaints. Desktop only. */}
-          {!lowPower && (
-            <motion.div
-              className="absolute left-1/2 top-1/2 -z-30 h-[160vmax] w-[160vmax] -translate-x-1/2 -translate-y-1/2 opacity-20"
-              style={{
-                background:
-                  "conic-gradient(from 0deg, transparent 0deg, rgba(16,185,129,0.35) 10deg, transparent 22deg, transparent 110deg, rgba(20,184,166,0.30) 122deg, transparent 134deg, transparent 220deg, rgba(56,189,248,0.28) 232deg, transparent 244deg, transparent 330deg, rgba(132,204,22,0.28) 342deg, transparent 354deg)",
-              }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 140, repeat: Infinity, ease: "linear" }}
-              aria-hidden
-            />
-          )}
-
-          {/* L5 — floating leaves canvas. Density drops on touch/narrow. */}
-          <FloatingLeaves
-            density={lowPower ? 12 : 32}
-            className="pointer-events-none absolute inset-0 -z-20 h-full w-full"
-          />
-
-          {/* L6 — soft radial vignette: clear center, gentle edges */}
-          <div
-            className="pointer-events-none absolute inset-0 -z-10"
+            className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at center, transparent 38%, rgba(2,6,23,0.25) 75%, rgba(2,6,23,0.55) 100%)",
+                "radial-gradient(ellipse at center, transparent 42%, rgba(2,6,23,0.30) 78%, rgba(2,6,23,0.55) 100%)",
             }}
-            aria-hidden
           />
 
           {/* Quote overlays + optional foreground content */}

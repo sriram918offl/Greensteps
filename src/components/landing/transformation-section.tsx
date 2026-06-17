@@ -11,8 +11,13 @@ export function TransformationSection() {
   const lowPower = useLowPower();
   return (
     <section className="relative overflow-hidden py-20" aria-label="Carbon to leaves transformation">
-      <div className="relative mx-auto max-w-5xl">
-        <div className="relative h-[420px] overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-emerald-950 to-emerald-700 shadow-2xl md:h-[480px]">
+      <div className="relative mx-auto max-w-5xl px-4">
+        {/* Glass card so the ambient backdrop reads through. The particles
+            sit on a subtle teal-emerald glaze, not a solid block of bg. */}
+        <div className="relative h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-emerald-950/30 shadow-2xl backdrop-blur-2xl md:h-[480px]">
+          {/* Thin top glow seam — makes the card feel like a moment in the
+              same continuous flow instead of a separate page. */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/50 to-transparent" />
           <ParticleField
             density={lowPower ? 22 : 60}
             className="absolute inset-0 h-full w-full"

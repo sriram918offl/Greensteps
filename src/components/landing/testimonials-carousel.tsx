@@ -74,7 +74,7 @@ export function TestimonialsCarousel() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-xl shadow-emerald-500/5">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-emerald-500/10 backdrop-blur-2xl">
         {/* Background glow tied to the active slide */}
         <div className="absolute -left-20 top-1/2 -z-10 h-72 w-72 -translate-y-1/2 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="absolute -right-20 top-1/2 -z-10 h-72 w-72 -translate-y-1/2 rounded-full bg-teal-500/15 blur-3xl" />
@@ -134,7 +134,7 @@ export function TestimonialsCarousel() {
         </AnimatePresence>
 
         {/* Controls */}
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
+        <div className="flex items-center justify-between border-t border-white/10 px-4 py-3">
           <button
             type="button"
             onClick={() => go(-1)}
