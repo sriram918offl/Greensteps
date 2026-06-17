@@ -23,7 +23,6 @@ import {
 import { TransformationSection } from "@/components/landing/transformation-section";
 import { TestimonialsCarousel } from "@/components/landing/testimonials-carousel";
 import { Reveal } from "@/components/fx/reveal";
-import { SectionReveal } from "@/components/fx/section-reveal";
 
 export default function LandingPage() {
   return (
@@ -114,14 +113,9 @@ export default function LandingPage() {
           attribution="Native American proverb"
         />
 
-        {/* SCENE 4 — Quote (74% → 88%).
-            Ends at 88% — NOT 100% — so it has time for its own fade-out
-            within its own range, AND the QuoteScrollSection wrapper has
-            5–10% of pure exit zone afterwards to dissolve everything
-            before the pin releases. This prevents the overlap with the
-            next section that the user was seeing. */}
+        {/* SCENE 4 — Quote (80% → 100%) */}
         <ScrollOverlay
-          range={[0.74, 0.88]}
+          range={[0.8, 1]}
           side="center"
           title="Measure Today. Improve Tomorrow."
           subtitle="A 60-second baseline. From there, every choice moves the number."
@@ -134,16 +128,10 @@ export default function LandingPage() {
           drifting leaves that carry the eye across the seam. */}
       <HeroTransition />
 
-      {/* ─── PRODUCT — 5 feature sections.
-          The intro header is wrapped in <SectionReveal> so it interpolates
-          its opacity and Y position based on its own scroll progress. This
-          is what makes the boundary feel continuous: as the hero pin
-          releases (its content already faded), this section's content
-          emerges from translateY: 40px on a smooth curve, perfectly
-          synced with scroll. No harsh cut, no snap. */}
-      <SectionReveal distance={40}>
-        <section className="relative">
-          <div className="container mx-auto max-w-5xl px-4 pt-8 text-center">
+      {/* ─── PRODUCT — 5 feature sections (untouched) ─────────────────── */}
+      <section className="relative">
+        <div className="container mx-auto max-w-5xl px-4 pt-8 text-center">
+          <Reveal>
             <Badge variant="success" className="rounded-full px-3 py-1">
               <Sparkles className="mr-1.5 h-3 w-3" /> What you get
             </Badge>
@@ -153,9 +141,9 @@ export default function LandingPage() {
             <p className="mt-3 text-balance text-muted-foreground md:text-lg">
               Five tools that turn awareness into measurable progress.
             </p>
-          </div>
-        </section>
-      </SectionReveal>
+          </Reveal>
+        </div>
+      </section>
 
       <StorySection
         index={1}
