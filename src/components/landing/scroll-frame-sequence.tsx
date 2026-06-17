@@ -264,17 +264,10 @@ export function QuoteScrollSection({
             </motion.div>
           )}
 
-          {/* Soft radial vignette: clear at centre for the quote, gentle
-              dimming at edges so detail in the global backdrop doesn't
-              compete with the headline. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse at center, transparent 42%, rgba(2,6,23,0.30) 78%, rgba(2,6,23,0.55) 100%)",
-            }}
-          />
+          {/* Vignette intentionally removed — it darkened the sticky element's
+              edges which created a visible "hero floor" line when the pin
+              released. Quote text already has a built-in shadow for contrast
+              against the global backdrop. */}
 
           {/* Quote overlays + optional foreground content */}
           {children}

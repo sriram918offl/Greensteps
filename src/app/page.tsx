@@ -302,16 +302,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FINAL CTA — softer surface so the ambient backdrop
-          continues underneath instead of being replaced by a solid block. */}
+      {/* ─── FINAL CTA — no surface of its own.
+          Earlier I gave this section its own translucent emerald glaze
+          + hairlines as "edges". On a continuous-atmosphere page that
+          read as a visible seam line at the top — the user could see
+          exactly where this section began. Now it's just orb accents
+          and content; the ambient backdrop carries through unchanged. */}
       <section className="relative overflow-hidden py-28 md:py-32">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-emerald-700/35 via-emerald-800/30 to-teal-700/35 backdrop-blur-md" />
-        <div className="absolute -top-24 left-1/4 -z-10 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" />
-        <div className="absolute -bottom-24 right-1/4 -z-10 h-72 w-72 rounded-full bg-teal-300/20 blur-3xl" />
-        {/* Top + bottom hairlines act as the section's "edges" without a
-            hard boundary — same trick as the transformation card. */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-300/30 to-transparent" />
+        {/* Soft emerald glows for the CTA's identity — large + blurred so
+            they bleed without creating an edge. */}
+        <div className="absolute -top-24 left-1/4 -z-10 h-80 w-80 rounded-full bg-emerald-400/15 blur-3xl" />
+        <div className="absolute -bottom-24 right-1/4 -z-10 h-80 w-80 rounded-full bg-teal-400/15 blur-3xl" />
 
         <div className="container relative mx-auto px-4 text-center text-white">
           <Reveal>
