@@ -186,6 +186,20 @@ export function QuoteScrollSection({
   const orbX = useTransform(progress, [0, 1], ["0%", "-12%"]);
   const orbY = useTransform(progress, [0, 1], ["0%", "8%"]);
 
+  // ─── End-of-pin "exit choreography" ─────────────────────────────────
+  // The last 15% of scroll is reserved as a fade-out zone so the sticky
+  // content is fully invisible by the time the pin releases. Without this
+  // the last overlay would still be partly painting as the next section
+  // appears below, creating the visible overlap you noticed.
+  //
+  // Content (overlays + hero scene wrapper):  opacity 1 → 0   y 0 → -80px
+  // Background glow (orbs only):              opacity 1 → 0.55
+  // Base gradient / leaves / vignette stay full opacity so the bg never
+  // "blinks" — it just gets quieter as the next section reveals.
+  const contentExitOpacity = useTransform(progress, [0.85, 0.95], [1, 0]);
+  const contentExitY = useTransform(progress, [0.85, 1.0], [0, -80]);
+  const glowFade = useTransform(progress, [0.88, 1.0], [1, 0.55]);
+
   React.useEffect(() => {
     const wrap = wrapRef.current;
     const sticky = stickyRef.current;
@@ -221,7 +235,11 @@ export function QuoteScrollSection({
       // on iOS Safari — fixed positioning forces layer thrash on every
       // scroll event. Reliability is fine because we already use 100svh.
       anticipatePin: 1,
-      scrub: 0.6,
+      // Tighter scrub — 0.3 instead of 0.6 — halves the visible lag between
+      // scroll position and animated progress. This is critical for the
+      // exit choreography: a long scrub means content is still mid-fade
+      // when the pin releases, causing the overlap with the next section.
+      scrub: 0.3,
       fastScrollEnd: true,
       onUpdate: (self) => progress.set(self.progress),
       invalidateOnRefresh: true,
@@ -250,18 +268,24 @@ export function QuoteScrollSection({
 
           {/* L2 — orbs. On desktop they drift with scroll progress; on
               low-power devices they're static + use a smaller blur kernel
-              so the GPU isn't burning ~3 huge offscreen surfaces a frame. */}
+              so the GPU isn't burning ~3 huge offscreen surfaces a frame.
+              Either way the WHOLE orb layer dims gently at the end of pin
+              (`glowFade`) so the next section feels emergent, not "stuck". */}
           {lowPower ? (
-            <div aria-hidden className="absolute inset-0 -z-40 overflow-hidden">
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 -z-40 overflow-hidden will-change-[opacity]"
+              style={{ opacity: glowFade }}
+            >
               <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/20 blur-3xl" />
               <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/20 blur-3xl" />
               <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/18 blur-3xl" />
-            </div>
+            </motion.div>
           ) : (
             <motion.div
               aria-hidden
-              className="absolute inset-0 -z-40 overflow-hidden"
-              style={{ x: orbX, y: orbY }}
+              className="absolute inset-0 -z-40 overflow-hidden will-change-[opacity,transform]"
+              style={{ x: orbX, y: orbY, opacity: glowFade }}
             >
               <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/25 blur-[120px]" />
               <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/25 blur-[120px]" />
@@ -314,8 +338,21 @@ export function QuoteScrollSection({
             aria-hidden
           />
 
-          {/* Quote overlays + optional foreground content */}
-          {children}
+          {/* Quote overlays + optional foreground content.
+              Wrapped in a scroll-driven exit motion so the last overlay is
+              guaranteed to be fully off-screen by progress 0.95 — well
+              before the pin releases at 1.0 — preventing the visible
+              overlap with the next section.
+
+              `will-change-[opacity,transform]` promotes this wrapper to
+              its own GPU layer only while the pin is active, so the exit
+              animation runs at 60 fps without any paint cost. */}
+          <motion.div
+            className="absolute inset-0 will-change-[opacity,transform]"
+            style={{ opacity: contentExitOpacity, y: contentExitY }}
+          >
+            {children}
+          </motion.div>
         </div>
       </div>
     </ScrollProgressContext.Provider>
