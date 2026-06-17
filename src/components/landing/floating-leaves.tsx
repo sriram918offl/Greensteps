@@ -99,14 +99,16 @@ export function FloatingLeaves({
         x: Math.random() * width,
         y: initial ? Math.random() * height : -40 - Math.random() * 60,
         vx: -0.15 - Math.random() * 0.35,    // drift slowly left
-        vy: 0.2 + Math.random() * 0.45,      // fall slowly down
+        vy: 0.25 + Math.random() * 0.5,      // fall slowly down
         rot: Math.random() * Math.PI * 2,
         vrot: (Math.random() - 0.5) * 0.01,
-        size: 14 + Math.random() * 22,
-        swayAmp: 18 + Math.random() * 24,
+        // Bigger leaves are more readable against the dark backdrop.
+        size: 20 + Math.random() * 28,       // 20–48 px (was 14–36)
+        swayAmp: 18 + Math.random() * 26,
         swayFreq: 0.0008 + Math.random() * 0.0012,
         hue: HUES[hueIdx],
-        alpha: 0.18 + Math.random() * 0.25,
+        // Higher alpha so the leaves are clearly present, not a ghost layer.
+        alpha: 0.45 + Math.random() * 0.4,   // 0.45–0.85 (was 0.18–0.43)
         life: Math.random() * 1000,
       };
     }

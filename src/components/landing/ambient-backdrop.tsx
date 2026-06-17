@@ -89,11 +89,12 @@ export function AmbientBackdrop() {
   const drift2X = useTransform(scrollYProgress, [0, 1], lowPower ? ["0%", "0%"] : ["0%", "-6%"]);
 
   // Leaf opacity follows how much of the viewport is content-heavy.
-  // Ambient zones (hero, transformation, final CTA) → 1.0
-  // Fully-content viewport (story chapter mid-scroll)  → 0.35
-  // Smooth Framer transition handles the in-between.
+  // Ambient zones (hero, transformation, final CTA) → 1.0 (full presence)
+  // Fully-content viewport (story chapter mid-scroll)  → 0.65 (clearly still there)
+  // The floor is intentionally kept high so leaves are NEVER absent —
+  // they should feel like a continuous environment, not a hero-only flourish.
   const contentDensity = useContentDensity();
-  const leafOpacity = 1 - 0.65 * Math.min(1, contentDensity);
+  const leafOpacity = 1 - 0.35 * Math.min(1, contentDensity);
 
   return (
     <div
@@ -169,7 +170,7 @@ export function AmbientBackdrop() {
         transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1] }}
       >
         <FloatingLeaves
-          density={lowPower ? 8 : 22}
+          density={lowPower ? 14 : 32}
           className="absolute inset-0 h-full w-full"
         />
       </motion.div>

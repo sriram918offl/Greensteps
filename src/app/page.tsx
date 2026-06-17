@@ -29,7 +29,10 @@ export default function LandingPage() {
     // Force dark CSS variables for the entire landing — cinema-mode page.
     // Inner app pages still respect the user's theme preference; only this
     // marketing surface commits to the dark eco-tech aesthetic.
-    <main className="dark relative bg-slate-950 text-slate-100">
+    /* `isolate` creates a stacking context on main so the AmbientBackdrop's
+       negative z-index sits ABOVE main's own bg — without it the bg-slate-950
+       paints over the backdrop and the leaves never appear. */
+    <main className="dark relative isolate bg-slate-950 text-slate-100">
       {/* Persistent atmosphere — fixed behind everything. */}
       <AmbientBackdrop />
       <IntroSplash />
