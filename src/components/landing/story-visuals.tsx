@@ -5,6 +5,7 @@ import {
   Bike, Car, Flame, Leaf, Plug, Salad, ShoppingBag, Sparkles, Sun,
   TrendingDown, Wind,
 } from "lucide-react";
+import { useLowPower } from "@/components/fx/use-media";
 
 /**
  * Story-section visuals. Each piece:
@@ -58,11 +59,15 @@ function useRevealRef() {
 
 export function VisualResponsibility() {
   const { ref, inView, reduce } = useRevealRef();
+  const lowPower = useLowPower();
+  // 44 separately-animated motion.spans tank framerate on iOS.
+  // 14 is enough density to read as "starfield" without the per-element cost.
+  const starCount = lowPower ? 14 : 44;
 
   // Predeclare star positions so they don't shift between renders.
   const stars = React.useMemo(
     () =>
-      Array.from({ length: 44 }, (_, i) => ({
+      Array.from({ length: starCount }, (_, i) => ({
         left: `${(i * 73) % 100}%`,
         top: `${(i * 31) % 100}%`,
         size: 1 + (i % 3),
@@ -70,7 +75,7 @@ export function VisualResponsibility() {
         twinkleDur: 2.2 + ((i * 7) % 11) * 0.3,
         twinkleDelay: (i % 9) * 0.25,
       })),
-    [],
+    [starCount],
   );
 
   return (
@@ -78,30 +83,49 @@ export function VisualResponsibility() {
       ref={ref}
       className="relative aspect-square overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-8 shadow-2xl"
     >
-      {/* Twinkling stars */}
-      {stars.map((s, i) => (
-        <motion.span
-          key={i}
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: s.left,
-            top: s.top,
-            width: s.size,
-            height: s.size,
-            background: "white",
-            borderRadius: 9999,
-            opacity: s.baseOpacity,
-          }}
-          animate={reduce ? undefined : { opacity: [s.baseOpacity, 0.95, s.baseOpacity] }}
-          transition={{
-            duration: s.twinkleDur,
-            delay: s.twinkleDelay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+      {/* Twinkling stars. On low-power devices we render them static (no
+          per-element infinite animation), since 14× motion.span is still
+          14× RAF callbacks. */}
+      {stars.map((s, i) =>
+        lowPower || reduce ? (
+          <span
+            key={i}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: s.left,
+              top: s.top,
+              width: s.size,
+              height: s.size,
+              background: "white",
+              borderRadius: 9999,
+              opacity: s.baseOpacity,
+            }}
+          />
+        ) : (
+          <motion.span
+            key={i}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: s.left,
+              top: s.top,
+              width: s.size,
+              height: s.size,
+              background: "white",
+              borderRadius: 9999,
+              opacity: s.baseOpacity,
+            }}
+            animate={{ opacity: [s.baseOpacity, 0.95, s.baseOpacity] }}
+            transition={{
+              duration: s.twinkleDur,
+              delay: s.twinkleDelay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ),
+      )}
 
       {/* Outer glow pulse */}
       {!reduce && (
@@ -490,6 +514,10 @@ function ProgressRing({ inView, reduce, fill }: ProgressRingProps) {
 
 export function VisualFuture() {
   const { ref, inView, reduce } = useRevealRef();
+  const lowPower = useLowPower();
+  // Three hill layers each running an `x` animation = 3 layout-affecting
+  // transforms a frame on a low-power device. Static on touch.
+  const hillsAnimate = !reduce && !lowPower;
 
   return (
     <div
@@ -527,12 +555,13 @@ export function VisualFuture() {
         )}
       </motion.div>
 
-      {/* Three hill layers with slow opposing drift = parallax wave */}
+      {/* Three hill layers with slow opposing drift = parallax wave.
+          On touch / narrow viewports the drift is dropped (static hills). */}
       <motion.svg
         className="absolute bottom-0 left-0 w-full"
         viewBox="0 0 400 200"
         preserveAspectRatio="none"
-        animate={reduce ? undefined : { x: [0, -10, 0] }}
+        animate={hillsAnimate ? { x: [0, -10, 0] } : undefined}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       >
         <path d="M0 200 V120 Q 100 60 200 100 T 400 90 V200 Z" fill="#10b981" opacity="0.85" />
@@ -541,7 +570,7 @@ export function VisualFuture() {
         className="absolute bottom-0 left-0 w-full"
         viewBox="0 0 400 200"
         preserveAspectRatio="none"
-        animate={reduce ? undefined : { x: [0, 8, 0] }}
+        animate={hillsAnimate ? { x: [0, 8, 0] } : undefined}
         transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
       >
         <path d="M0 200 V150 Q 80 100 180 130 T 400 130 V200 Z" fill="#047857" opacity="0.9" />
@@ -550,7 +579,7 @@ export function VisualFuture() {
         className="absolute bottom-0 left-0 w-full"
         viewBox="0 0 400 200"
         preserveAspectRatio="none"
-        animate={reduce ? undefined : { x: [0, -6, 0] }}
+        animate={hillsAnimate ? { x: [0, -6, 0] } : undefined}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1 }}
       >
         <path d="M0 200 V170 Q 100 140 220 160 T 400 160 V200 Z" fill="#064e3b" />

@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
 import { cn } from "@/lib/utils";
 import { FloatingLeaves } from "./floating-leaves";
+import { useLowPower } from "@/components/fx/use-media";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -177,9 +178,11 @@ export function QuoteScrollSection({
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const stickyRef = React.useRef<HTMLDivElement>(null);
   const progress = useMotionValue(0);
+  // Touch / narrow viewport / data-saver users get a stripped composition.
+  const lowPower = useLowPower();
 
-  // Slow drift across the full scroll for the orbs — gives a sense of
-  // depth/parallax tied to scroll position rather than time alone.
+  // Scroll-tied orb parallax — disabled on low-power devices where the
+  // perf cost outweighs the depth cue.
   const orbX = useTransform(progress, [0, 1], ["0%", "-12%"]);
   const orbY = useTransform(progress, [0, 1], ["0%", "8%"]);
 
@@ -214,9 +217,12 @@ export function QuoteScrollSection({
       start: "top top",
       end: () => `+=${computeLength() * window.innerHeight}`,
       pin: sticky,
-      pinType: "fixed",
+      // `pinType: "transform"` (default) is materially faster than "fixed"
+      // on iOS Safari — fixed positioning forces layer thrash on every
+      // scroll event. Reliability is fine because we already use 100svh.
       anticipatePin: 1,
       scrub: 0.6,
+      fastScrollEnd: true,
       onUpdate: (self) => progress.set(self.progress),
       invalidateOnRefresh: true,
     });
@@ -242,17 +248,28 @@ export function QuoteScrollSection({
           {/* L1 — deep emerald base */}
           <div className="absolute inset-0 -z-50 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950" />
 
-          {/* L2 — slow scroll-tied orbs (parallax with progress) */}
-          <motion.div
-            className="absolute inset-0 -z-40 overflow-hidden"
-            style={{ x: orbX, y: orbY }}
-          >
-            <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/25 blur-[120px]" />
-            <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/25 blur-[120px]" />
-            <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/22 blur-[110px]" />
-          </motion.div>
+          {/* L2 — orbs. On desktop they drift with scroll progress; on
+              low-power devices they're static + use a smaller blur kernel
+              so the GPU isn't burning ~3 huge offscreen surfaces a frame. */}
+          {lowPower ? (
+            <div aria-hidden className="absolute inset-0 -z-40 overflow-hidden">
+              <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/20 blur-3xl" />
+              <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/20 blur-3xl" />
+              <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/18 blur-3xl" />
+            </div>
+          ) : (
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 -z-40 overflow-hidden"
+              style={{ x: orbX, y: orbY }}
+            >
+              <div className="absolute left-[12%] top-[20%] h-[55vmin] w-[55vmin] rounded-full bg-emerald-500/25 blur-[120px]" />
+              <div className="absolute right-[10%] top-[55%] h-[50vmin] w-[50vmin] rounded-full bg-sky-500/25 blur-[120px]" />
+              <div className="absolute left-[45%] bottom-[5%] h-[40vmin] w-[40vmin] rounded-full bg-teal-400/22 blur-[110px]" />
+            </motion.div>
+          )}
 
-          {/* L3 — dot grid for tactile depth */}
+          {/* L3 — dot grid for tactile depth (cheap, kept everywhere) */}
           <div
             className="absolute inset-0 -z-30 opacity-[0.12]"
             style={{
@@ -265,21 +282,25 @@ export function QuoteScrollSection({
             aria-hidden
           />
 
-          {/* L4 — slow conic light rays */}
-          <motion.div
-            className="absolute left-1/2 top-1/2 -z-30 h-[160vmax] w-[160vmax] -translate-x-1/2 -translate-y-1/2 opacity-20"
-            style={{
-              background:
-                "conic-gradient(from 0deg, transparent 0deg, rgba(16,185,129,0.35) 10deg, transparent 22deg, transparent 110deg, rgba(20,184,166,0.30) 122deg, transparent 134deg, transparent 220deg, rgba(56,189,248,0.28) 232deg, transparent 244deg, transparent 330deg, rgba(132,204,22,0.28) 342deg, transparent 354deg)",
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 140, repeat: Infinity, ease: "linear" }}
-            aria-hidden
-          />
+          {/* L4 — rotating conic light rays. Single biggest GPU cost on
+              this page: 160vmax² surface + gradient + per-frame rotate
+              repaints. Desktop only. */}
+          {!lowPower && (
+            <motion.div
+              className="absolute left-1/2 top-1/2 -z-30 h-[160vmax] w-[160vmax] -translate-x-1/2 -translate-y-1/2 opacity-20"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, transparent 0deg, rgba(16,185,129,0.35) 10deg, transparent 22deg, transparent 110deg, rgba(20,184,166,0.30) 122deg, transparent 134deg, transparent 220deg, rgba(56,189,248,0.28) 232deg, transparent 244deg, transparent 330deg, rgba(132,204,22,0.28) 342deg, transparent 354deg)",
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 140, repeat: Infinity, ease: "linear" }}
+              aria-hidden
+            />
+          )}
 
-          {/* L5 — floating leaves canvas */}
+          {/* L5 — floating leaves canvas. Density drops on touch/narrow. */}
           <FloatingLeaves
-            density={32}
+            density={lowPower ? 12 : 32}
             className="pointer-events-none absolute inset-0 -z-20 h-full w-full"
           />
 

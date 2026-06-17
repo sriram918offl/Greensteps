@@ -159,3 +159,23 @@ html { scroll-behavior: smooth; }
 
 /* Subtle GPU compositing hint for Framer-animated cards (reduces jank) */
 .glass, .glass-strong { will-change: transform; }
+
+/* Mobile performance helpers — opt off-screen chapters out of paint */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 800px;
+}
+
+/* On touch + narrow viewports, dial down expensive filters and disable
+   layout-thrashing infinite animations that survived the JS gates. */
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+  /* Cap any blur over 64px on phones — they are the single most expensive
+     compositor operation we use. */
+  .blur-\[110px\], .blur-\[120px\] {
+    filter: blur(48px) !important;
+    -webkit-filter: blur(48px) !important;
+  }
+  /* iOS Safari is dramatically faster when fixed-position pinned elements
+     promote themselves once, not per scroll event. */
+  .sticky { will-change: auto; }
+}

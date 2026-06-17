@@ -40,7 +40,15 @@ export function FloatingLeaves({
     if (!ctx) return;
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Floor DPR at 1.5 on mobile — even iPhone 15's 3× DPR makes canvas
+    // overdraw 9× the pixels of CSS dimensions. Visual diff is unnoticeable
+    // for blurry leaf shapes; perf diff is huge.
+    const lowPower = window.matchMedia(
+      "(hover: none) and (pointer: coarse), (max-width: 768px)",
+    ).matches;
+    const dpr = Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
+    // Halve density on low-power if the caller didn't already trim it.
+    const effectiveDensity = lowPower ? Math.min(density, 14) : density;
     let width = 0, height = 0;
 
     function resize() {
@@ -103,7 +111,7 @@ export function FloatingLeaves({
       };
     }
 
-    const leaves: Leaf[] = Array.from({ length: density }, () => spawn(true));
+    const leaves: Leaf[] = Array.from({ length: effectiveDensity }, () => spawn(true));
 
     resize();
     const ro = new ResizeObserver(resize);
