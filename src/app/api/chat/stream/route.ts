@@ -70,12 +70,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const prompt = `CONTEXT (numbered passages — cite by [number] only if you actually use the fact):
+  // Prompt construction:
+  //   • With context: instruct the model to use it where relevant, cite by [n].
+  //   • Without context: just send the question — the system prompt handles
+  //     the "answer from general knowledge, silently" path. This is the key
+  //     fix that stops the model from prefacing every off-topic-for-RAG
+  //     answer with "I don't have a direct source...".
+  const prompt = context
+    ? `Use the CONTEXT below where it's directly relevant. Cite a passage with [n] only when you actually use it.
+
+CONTEXT
 ${context}
 
-USER QUESTION: ${message}
-
-REMINDER: If the context doesn't directly cover the question, open with "I don't have a direct source on this in my knowledge base, but…" and answer from general principles. Never fabricate [n] citations.`;
+QUESTION
+${message}`
+    : `QUESTION
+${message}`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -90,15 +100,12 @@ REMINDER: If the context doesn't directly cover the question, open with "I don't
           controller.enqueue(encoder.encode(text));
         }
         // Gemini streams CAN complete without yielding any tokens (empty
-        // completion, safety-filter trip, occasional API hiccup). In that
-        // case the loop above exits cleanly with no error AND no output —
-        // the user would see citations and a silent message. Force a
+        // completion, safety-filter trip, occasional API hiccup). Drop a
         // grounded fallback so there's always an answer underneath.
         if (full.trim().length === 0) {
           logger.warn("chat.empty_completion", { messageLen: message.length, citationCount: citations.length });
-          const fallback = citations.length > 0
-            ? "Based on the sources above, the short version is: focus first on whichever category drives the largest share of your monthly footprint — usually transport for frequent flyers/drivers, energy for AC-heavy households, and food for high-meat diets. Pick the biggest one and target a 20% cut this month. If you want, ask a more specific follow-up and I can give you concrete numbers."
-            : "I couldn't pull a direct match from the knowledge base for that. Try rephrasing, or ask me about a specific area — transport, home energy, food, or shopping emissions all have concrete data behind them.";
+          const fallback =
+            "The biggest lever for most people is whichever category drives the largest share of their monthly footprint — usually transport for frequent flyers and drivers, energy for AC-heavy households, and food for high-meat diets. Pick the biggest one and target a 20% cut this month. Ask me a more specific question (e.g. \"how much does an EV actually save in Mumbai\") and I'll give you concrete numbers.";
           full = fallback;
           controller.enqueue(encoder.encode(fallback));
         }

@@ -95,9 +95,12 @@ export async function similaritySearch(
 }
 
 export function buildContext(chunks: RetrievedChunk[]): string {
-  if (chunks.length === 0) {
-    return "(No relevant context available in the knowledge base for this question.)";
-  }
+  // Return an empty string when there's nothing relevant. Earlier this
+  // returned a literal "(No relevant context...)" sentence that nudged the
+  // model into hedging openings like "I don't have a direct source on this".
+  // Now an empty context lets the model answer from general knowledge
+  // silently — guided by the system prompt's "never hedge" rule.
+  if (chunks.length === 0) return "";
   return chunks
     .map((c, i) => `[${i + 1}] ${c.title} (${c.source ?? "GreenSteps KB"})\n${c.content}`)
     .join("\n\n");
