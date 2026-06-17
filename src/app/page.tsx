@@ -133,7 +133,7 @@ export default function LandingPage() {
 
       {/* ─── PRODUCT — 5 feature sections.
           Section bg is transparent. The ambient backdrop fills behind it. */}
-      <section className="relative pt-24">
+      <section className="relative pt-24" data-leaf-density="reduced">
         <div className="container mx-auto max-w-5xl px-4 text-center">
           <Reveal>
             <Badge
@@ -278,8 +278,8 @@ export default function LandingPage() {
       {/* ─── PARTICLE TRANSFORMATION (untouched) ─────────────────────── */}
       <TransformationSection />
 
-      {/* ─── TESTIMONIALS (untouched) ────────────────────────────────── */}
-      <section id="testimonials" className="py-24">
+      {/* ─── TESTIMONIALS — content-heavy (reading carousel). */}
+      <section id="testimonials" className="py-24" data-leaf-density="reduced">
         <div className="container mx-auto">
           <Reveal>
             <div className="mx-auto max-w-2xl text-center">

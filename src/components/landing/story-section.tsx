@@ -62,7 +62,13 @@ export function StorySection({
   });
 
   return (
-    <section ref={ref} className="cv-auto relative py-16 md:py-24 lg:py-32">
+    <section
+      ref={ref}
+      // Content-heavy: a chapter is a card + body copy + CTA. The ambient
+      // backdrop's leaves dim over this section so reading is comfortable.
+      data-leaf-density="reduced"
+      className="cv-auto relative py-16 md:py-24 lg:py-32"
+    >
       {/* No section-level accent glow — the global AmbientBackdrop already
           carries the atmosphere. A second glow per chapter would compete
           with the backdrop's orbs and break the "one continuous experience"

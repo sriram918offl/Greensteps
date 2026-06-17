@@ -1,8 +1,60 @@
 "use client";
 import * as React from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { FloatingLeaves } from "./floating-leaves";
 import { useLowPower } from "@/components/fx/use-media";
+
+/**
+ * Track how much of the viewport is currently occupied by content-heavy
+ * sections (anything tagged with `data-leaf-density="reduced"`). Returns a
+ * 0..1 value where 1 means a content-heavy section fully owns the viewport.
+ *
+ * We use this to dim the floating leaves so reading cards isn't competing
+ * with the ambient motion behind them — leaves stay vivid in the hero,
+ * transformation, and CTA moments and quiet down over the story chapters
+ * and testimonials. Implemented as opacity modulation (not re-spawning
+ * particles) so the transition is buttery and the canvas doesn't reset.
+ */
+function useContentDensity(): number {
+  const [density, setDensity] = React.useState(0);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // The set of sections currently being tracked + their last-seen ratio.
+    const ratios = new Map<Element, number>();
+
+    const recompute = () => {
+      // Take the max — if multiple content sections overlap during scroll
+      // we use the dominant one rather than summing (would clip > 1).
+      let max = 0;
+      for (const r of ratios.values()) if (r > max) max = r;
+      setDensity(max);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          ratios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        recompute();
+      },
+      // Many thresholds → smooth interpolation as section enters/exits.
+      { threshold: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0] },
+    );
+
+    // Initial sweep + watch for any later-mounted sections (e.g. after
+    // route transitions). We re-query on mount only — additions are rare.
+    document.querySelectorAll('[data-leaf-density="reduced"]').forEach((el) => {
+      observer.observe(el);
+      ratios.set(el, 0);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return density;
+}
 
 /**
  * Persistent ambient backdrop — sits `position: fixed` behind the entire
@@ -27,6 +79,7 @@ import { useLowPower } from "@/components/fx/use-media";
  */
 export function AmbientBackdrop() {
   const lowPower = useLowPower();
+  const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
 
   // Scroll-driven orb drift — gentle, only on desktop to keep mobile cheap.
@@ -34,6 +87,13 @@ export function AmbientBackdrop() {
   const drift1X = useTransform(scrollYProgress, [0, 1], lowPower ? ["0%", "0%"] : ["0%", "4%"]);
   const drift2Y = useTransform(scrollYProgress, [0, 1], lowPower ? ["0%", "0%"] : ["0%", "10%"]);
   const drift2X = useTransform(scrollYProgress, [0, 1], lowPower ? ["0%", "0%"] : ["0%", "-6%"]);
+
+  // Leaf opacity follows how much of the viewport is content-heavy.
+  // Ambient zones (hero, transformation, final CTA) → 1.0
+  // Fully-content viewport (story chapter mid-scroll)  → 0.35
+  // Smooth Framer transition handles the in-between.
+  const contentDensity = useContentDensity();
+  const leafOpacity = 1 - 0.65 * Math.min(1, contentDensity);
 
   return (
     <div
@@ -98,11 +158,21 @@ export function AmbientBackdrop() {
         />
       )}
 
-      {/* L5 — Floating leaves canvas, page-wide. */}
-      <FloatingLeaves
-        density={lowPower ? 8 : 22}
-        className="absolute inset-0 h-full w-full"
-      />
+      {/* L5 — Floating leaves canvas, page-wide. The wrapper's opacity is
+          driven by `useContentDensity` so leaves dim over content-heavy
+          sections (story chapters, testimonials) and stay vivid in ambient
+          zones. Canvas particles keep running at the same density so the
+          transition is opacity-only — no re-spawn jitter. */}
+      <motion.div
+        className="absolute inset-0 will-change-[opacity]"
+        animate={{ opacity: reduceMotion ? 1 : leafOpacity }}
+        transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1] }}
+      >
+        <FloatingLeaves
+          density={lowPower ? 8 : 22}
+          className="absolute inset-0 h-full w-full"
+        />
+      </motion.div>
 
       {/* Soft top tint so the SiteHeader doesn't sit on a flat black band. */}
       <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-slate-950/40 to-transparent" />
