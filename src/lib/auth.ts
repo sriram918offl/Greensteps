@@ -3,10 +3,23 @@ import { redirect } from "next/navigation";
 import { prisma } from "./prisma";
 import type { User } from "@prisma/client";
 
+// Admins can be allow-listed by Clerk user ID (ADMIN_USER_IDS) OR by email
+// address (ADMIN_EMAILS). Email is the easier one to manage — you know your
+// own email without digging through the Clerk dashboard. Either match grants
+// the ADMIN role on the next request.
 const ADMIN_IDS = (process.env.ADMIN_USER_IDS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+function isAdmin(userId: string, email: string): boolean {
+  return ADMIN_IDS.includes(userId) || ADMIN_EMAILS.includes(email.toLowerCase());
+}
 
 export async function requireUser(): Promise<User> {
   const { userId } = await auth();
@@ -14,6 +27,7 @@ export async function requireUser(): Promise<User> {
   const clerkUser = await currentUser();
   const email = clerkUser?.emailAddresses[0]?.emailAddress ?? `${userId}@greensteps.local`;
   const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || null;
+  const admin = isAdmin(userId, email);
 
   const user = await prisma.user.upsert({
     where: { clerkId: userId },
@@ -22,13 +36,14 @@ export async function requireUser(): Promise<User> {
       email,
       name,
       imageUrl: clerkUser?.imageUrl,
-      role: ADMIN_IDS.includes(userId) ? "ADMIN" : "USER",
+      role: admin ? "ADMIN" : "USER",
     },
     update: {
       email,
       name,
       imageUrl: clerkUser?.imageUrl,
-      role: ADMIN_IDS.includes(userId) ? "ADMIN" : undefined,
+      // Only force ADMIN on match; never silently demote here.
+      role: admin ? "ADMIN" : undefined,
     },
   });
 
