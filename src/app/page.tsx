@@ -22,6 +22,7 @@ import {
 } from "@/components/landing/story-visuals";
 import { TransformationSection } from "@/components/landing/transformation-section";
 import { TestimonialsCarousel } from "@/components/landing/testimonials-carousel";
+import { MembersShowcase } from "@/components/landing/members-showcase";
 import { Reveal } from "@/components/fx/reveal";
 
 export default function LandingPage() {
@@ -301,6 +302,11 @@ export default function LandingPage() {
           </Reveal>
         </div>
       </section>
+
+      {/* ─── MEMBERS SHOWCASE — surfaces the auth-gated power features
+          (AI Coach, Challenges, Dashboard, Goals/Simulator) so they're
+          visible to logged-out visitors with a clear "sign up free" CTA. */}
+      <MembersShowcase />
 
       {/* ─── FINAL CTA — no surface of its own.
           Earlier I gave this section its own translucent emerald glaze
