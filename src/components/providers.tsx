@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LenisProvider } from "@/components/fx/lenis-provider";
+import { AdminShortcut } from "@/components/admin/admin-shortcut";
 
 // NOTE: page transitions are handled at the root layout via
 // `next-view-transitions`. The old Framer-based <PageTransition>
@@ -26,6 +27,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider delayDuration={150}>
           <LenisProvider>{children}</LenisProvider>
           <Toaster position="top-right" theme="system" richColors closeButton />
+          {/* Hidden keyboard entry to /admin — no visible link anywhere. */}
+          <AdminShortcut />
         </TooltipProvider>
       </ThemeProvider>
     </ClerkProvider>

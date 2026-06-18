@@ -11,7 +11,6 @@ import {
   Sparkles,
   FlaskConical,
   Bot,
-  Shield,
   Leaf,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,7 @@ const items = [
   { href: "/chat", label: "Chatbot", icon: Bot },
 ];
 
-export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AppSidebar() {
   const pathname = usePathname();
 
   return (
@@ -61,25 +60,10 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           );
         })}
 
-        {isAdmin && (
-          <>
-            <div className="px-3 pt-6 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
-              Admin
-            </div>
-            <Link
-              href="/admin"
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                pathname.startsWith("/admin")
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              Admin Panel
-            </Link>
-          </>
-        )}
+        {/* Admin link intentionally NOT rendered here. The admin panel is
+            reached via the secret keyboard shortcut (<AdminShortcut />) and
+            is protected server-side by requireAdmin(). Keeping it out of the
+            nav means it isn't discoverable by browsing the UI. */}
       </nav>
 
       <div className="border-t border-border p-4 text-xs text-muted-foreground">
