@@ -180,6 +180,11 @@ export function QuoteScrollSection({
   // Touch / narrow viewport / data-saver users get a stripped composition.
   const lowPower = useLowPower();
 
+  // The wrapper height MUST match the pin length, otherwise scroll past the
+  // pin shows empty space. Starts at the prop (matches SSR), then the effect
+  // trims it for mobile/tablet on mount.
+  const [effectiveLength, setEffectiveLength] = React.useState(scrollLength);
+
   // Scroll-tied orb parallax — disabled on low-power devices where the
   // perf cost outweighs the depth cue.
   const orbX = useTransform(progress, [0, 1], ["0%", "-12%"]);
@@ -190,35 +195,33 @@ export function QuoteScrollSection({
     const sticky = stickyRef.current;
     if (!wrap || !sticky) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      // No pin — show all overlays "static" by holding progress at midpoint
-      progress.set(0.5);
-      return;
-    }
-
-    // ─── Mobile / tablet tuning ──────────────────────────────────────
-    // 1) Use 100svh (small viewport) so address-bar collapse on iOS / Android
-    //    doesn't yank the pin's end position mid-scroll.
-    // 2) Trim scrollLength on narrow screens so the pin doesn't drag forever —
-    //    users get to the storyline content faster.
-    // 3) `pinType: "fixed"` is more reliable than transform-based pinning on
-    //    mobile WebKit where layout shifts can desync the sticky element.
+    // Shorter pin on small screens so users reach the chapters faster.
     const computeLength = () => {
       const w = window.innerWidth;
-      if (w < 640) return Math.min(scrollLength, 3);  // phones: short pin
+      if (w < 640) return Math.min(scrollLength, 3);  // phones
       if (w < 1024) return Math.min(scrollLength, 4); // tablets
       return scrollLength;
     };
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      // No pin/scroll narrative — collapse the wrapper to one viewport and
+      // show the hero scene. No empty scroll space.
+      setEffectiveLength(0);
+      progress.set(0);
+      return;
+    }
+
+    // Keep wrapper height in lockstep with the pin length (fixes the empty
+    // gap after the hero on mobile, where the pin ends before the wrapper did).
+    setEffectiveLength(computeLength());
 
     const trigger = ScrollTrigger.create({
       trigger: wrap,
       start: "top top",
       end: () => `+=${computeLength() * window.innerHeight}`,
       pin: sticky,
-      // `pinType: "transform"` (default) is materially faster than "fixed"
-      // on iOS Safari — fixed positioning forces layer thrash on every
-      // scroll event. Reliability is fine because we already use 100svh.
+      // Default "transform" pinType — far faster than "fixed" on iOS Safari.
       anticipatePin: 1,
       scrub: 0.6,
       fastScrollEnd: true,
@@ -226,7 +229,31 @@ export function QuoteScrollSection({
       invalidateOnRefresh: true,
     });
 
-    return () => { trigger.kill(); };
+    // ─── Robust re-measure (fixes "scroll dead until refresh" on mobile) ──
+    // The <IntroSplash> locks body scroll (overflow:hidden) for ~2.4s on the
+    // first visit. If ScrollTrigger measures the pin during that window the
+    // dimensions are wrong and scrolling looks frozen until a manual reload
+    // (which skips the splash via sessionStorage). Re-measuring after fonts
+    // load, after window 'load', and once past the splash window makes the
+    // very first load behave like a refreshed one.
+    const refresh = () => ScrollTrigger.refresh();
+    const onResize = () => {
+      setEffectiveLength(computeLength());
+      ScrollTrigger.refresh();
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("load", refresh);
+    if (document.fonts?.ready) document.fonts.ready.then(refresh).catch(() => {});
+    const t1 = setTimeout(refresh, 400);
+    const t2 = setTimeout(refresh, 2700); // after the intro splash unlocks scroll
+
+    return () => {
+      trigger.kill();
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("load", refresh);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [scrollLength, progress]);
 
   return (
@@ -234,9 +261,9 @@ export function QuoteScrollSection({
       <div
         ref={wrapRef}
         className="relative"
-        // Use svh so the wrap height stays stable as mobile chrome shows/hides.
-        // Add 1 extra viewport for the pin's exit phase.
-        style={{ height: `${(scrollLength + 1) * 100}svh` }}
+        // Height tracks the (possibly mobile-trimmed) pin length + 1 viewport
+        // for the exit. svh keeps it stable as mobile chrome shows/hides.
+        style={{ height: `${(effectiveLength + 1) * 100}svh` }}
         aria-label={ariaLabel}
         role="region"
       >
