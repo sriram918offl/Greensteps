@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PledgeForm } from "./pledge-form";
+import { ReportButton } from "./report-button";
 import { formatKg } from "@/lib/utils";
 
 export const metadata = {
@@ -86,7 +87,10 @@ export default async function PledgePage() {
                           <span className="font-medium">{p.name}</span>
                           {p.city && <span>· {p.city}</span>}
                         </div>
-                        <span>{p.createdAt.toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{p.createdAt.toLocaleDateString()}</span>
+                          <ReportButton pledgeId={p.id} />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

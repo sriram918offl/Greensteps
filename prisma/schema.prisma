@@ -347,16 +347,17 @@ model PublicCalculation {
 
 // Public pledge wall — name + city + commitment. No auth required.
 model Pledge {
-  id        String   @id @default(cuid())
-  name      String
-  city      String?
-  message   String   @db.Text
-  category  String   @default("general") // transport | energy | food | shopping | general
-  estCo2    Float    @default(0)         // estimated kg CO2 saved per month if kept
-  approved  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  city        String?
+  message     String   @db.Text
+  category    String   @default("general") // transport | energy | food | shopping | general
+  estCo2      Float    @default(0)          // estimated kg CO2 saved per month if kept
+  approved    Boolean  @default(false)      // hybrid: clean=true instant, borderline=false (held)
+  reportCount Int      @default(0)          // community reports; auto-hides at threshold
+  createdAt   DateTime @default(now())
 
-  @@index([createdAt])
+  @@index([approved, createdAt])
   @@index([category])
 }
 

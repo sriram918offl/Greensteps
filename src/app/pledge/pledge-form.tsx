@@ -25,7 +25,13 @@ export function PledgeForm() {
         category,
       });
       if (res.ok) {
-        toast.success("Pledge added — thank you 🌱");
+        if (res.status === "pending") {
+          toast.success("Thanks! Your pledge is in review and will appear shortly. 🌱", {
+            duration: 6000,
+          });
+        } else {
+          toast.success("Pledge added — thank you 🌱");
+        }
         formRef.current?.reset();
       } else {
         toast.error(res.error);

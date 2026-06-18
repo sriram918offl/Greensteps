@@ -1,5 +1,5 @@
 import Link from "@/components/ui/link";
-import { Users, Trophy, BookOpen, BarChart3, Leaf, Cloud } from "lucide-react";
+import { Users, Trophy, BookOpen, BarChart3, Leaf, Cloud, ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -10,7 +10,7 @@ import { formatKg } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [userCount, activityCount, totalSaved, totalEmissionsAgg, topUsers, recentSignups] = await Promise.all([
+  const [userCount, activityCount, totalSaved, totalEmissionsAgg, topUsers, recentSignups, pledgeQueue] = await Promise.all([
     prisma.user.count(),
     prisma.activity.count(),
     prisma.user.aggregate({ _sum: { carbonSaved: true } }),
@@ -25,6 +25,7 @@ export default async function AdminDashboardPage() {
       take: 5,
       select: { id: true, name: true, email: true, createdAt: true },
     }),
+    prisma.pledge.count({ where: { OR: [{ approved: false }, { reportCount: { gt: 0 } }] } }),
   ]);
 
   return (
@@ -38,7 +39,14 @@ export default async function AdminDashboardPage() {
           <StatCard label="Emissions tracked" value={formatKg(totalEmissionsAgg._sum.co2Kg ?? 0)} icon={BarChart3} accent="rose" />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
+          <AdminLink
+            href="/admin/pledges"
+            title="Pledge moderation"
+            desc={pledgeQueue > 0 ? `${pledgeQueue} awaiting review` : "Review held & reported pledges"}
+            icon={ShieldCheck}
+            badge={pledgeQueue > 0 ? pledgeQueue : undefined}
+          />
           <AdminLink href="/admin/users" title="Manage users" desc="View, edit, and ban users" icon={Users} />
           <AdminLink href="/admin/challenges" title="Manage challenges" desc="Create, edit, delete community challenges" icon={Trophy} />
           <AdminLink href="/admin/knowledge" title="Knowledge base" desc="Upload, edit, re-index RAG documents" icon={BookOpen} />
@@ -94,14 +102,21 @@ function AdminLink({
   title,
   desc,
   icon: Icon,
+  badge,
 }: {
   href: string;
   title: string;
   desc: string;
   icon: typeof Users;
+  badge?: number;
 }) {
   return (
-    <Card className="transition-transform hover:-translate-y-0.5">
+    <Card className="relative transition-transform hover:-translate-y-0.5">
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute right-4 top-4 grid h-6 min-w-6 place-items-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">
+          {badge}
+        </span>
+      )}
       <CardHeader>
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
           <Icon className="h-5 w-5" />

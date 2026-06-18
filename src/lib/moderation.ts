@@ -74,3 +74,74 @@ Message: """${text.slice(0, 500)}"""`,
     return { allow: true };
   }
 }
+
+// ----------------------------------------------------------------------------
+// Pledge moderation — 3-tier verdict for the hybrid publish flow.
+//   • allow → publish instantly (clean content)
+//   • hold  → save but keep hidden (approved=false) for admin review
+//             (borderline: AI unsure, links present, weak signals)
+//   • block → reject outright (hard slur/spam/threat patterns)
+//
+// Moderates ALL user-visible fields (name + city + message), not just the
+// message — the name field was an unmoderated hole.
+// ----------------------------------------------------------------------------
+
+export type PledgeVerdict = "allow" | "hold" | "block";
+
+export interface PledgeModerationResult {
+  verdict: PledgeVerdict;
+  reason?: string;
+}
+
+export async function moderatePledge(fields: {
+  name: string;
+  city?: string;
+  message: string;
+}): Promise<PledgeModerationResult> {
+  const { name, city, message } = fields;
+
+  // 1) Hard local checks across every visible field. A blocked pattern in
+  //    ANY field is an outright reject.
+  for (const [field, value] of [["name", name], ["city", city ?? ""], ["message", message]] as const) {
+    if (!value) continue;
+    for (const re of BLOCKED_PATTERNS) {
+      if (re.test(value)) return { verdict: "block", reason: `blocked_pattern:${field}` };
+    }
+  }
+
+  // 2) Local soft signals → hold for review rather than publish blind.
+  const urls = message.match(/https?:\/\/\S+/gi) ?? [];
+  if (urls.length > URL_LIMIT) return { verdict: "hold", reason: "too_many_links" };
+  // Name should look like a name, not a sentence/handle dump.
+  if (name.length > 40 || /https?:\/\//i.test(name)) return { verdict: "hold", reason: "suspicious_name" };
+
+  // 3) AI 3-way classification on the combined visible content. On any API
+  //    failure we HOLD (fail safe) rather than allow — a missed review is
+  //    cheaper than a public slur.
+  try {
+    const raw = await generateText(
+      `You are a strict content moderator for a PUBLIC sustainability pledge wall where each entry shows a name, city, and a short commitment.
+
+Classify the submission into exactly one word:
+  ALLOW  — clearly safe: a genuine eco commitment, normal name/city.
+  REVIEW — anything you are even slightly unsure about, off-topic but harmless, ambiguous, or that needs a human glance.
+  BLOCK  — hate speech, slurs, sexual content, threats, harassment, doxxing, spam, scams, or gibberish.
+
+Consider ALL fields together. A slur in the NAME is still BLOCK.
+
+NAME: """${name.slice(0, 60)}"""
+CITY: """${(city ?? "").slice(0, 60)}"""
+COMMITMENT: """${message.slice(0, 400)}"""
+
+Answer with ONLY one word: ALLOW, REVIEW, or BLOCK.`,
+    );
+    const decision = raw.trim().toUpperCase().replace(/[^A-Z]/g, "");
+    if (decision.startsWith("BLOCK")) return { verdict: "block", reason: "ai_blocked" };
+    if (decision.startsWith("REVIEW")) return { verdict: "hold", reason: "ai_review" };
+    if (decision.startsWith("ALLOW")) return { verdict: "allow" };
+    // Unexpected output → hold for safety.
+    return { verdict: "hold", reason: "ai_unclear" };
+  } catch {
+    return { verdict: "hold", reason: "ai_unavailable" };
+  }
+}
