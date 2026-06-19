@@ -3,7 +3,6 @@
 // Uses raw SQL for similarity search since Prisma can't yet model vector ops.
 // ----------------------------------------------------------------------------
 
-import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { embed } from "./gemini";
 

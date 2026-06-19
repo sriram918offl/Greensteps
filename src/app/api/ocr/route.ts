@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RATE_LIMITS, identifierFromRequest, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     const estimatedCo2 = Number(parsed.kwh ?? 0) * 0.4;
     return NextResponse.json({ ...parsed, estimatedCo2 });
   } catch (e) {
-    console.error("ocr error", e);
+    logger.error("ocr.extraction_failed", { mime, bytes: file.size }, e);
     return NextResponse.json({ error: "Failed to extract data" }, { status: 500 });
   }
 }

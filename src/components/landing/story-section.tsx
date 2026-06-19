@@ -44,11 +44,9 @@ export function StorySection({
 
   const a = ACCENTS[accent];
   const visualOnLeft = side === "left";
-  // Text lives on the opposite side of the visual.
-  const textOnRight = visualOnLeft === false ? false : true;
-  // (Above is just a clarification — when `side="left"` the visual is left
-  //  and the text is right. The `lg:[&>*:first-child]:order-2` keeps the
-  //  first DOM child — the text — in column 2 on lg+.)
+  // When `side="left"` the visual sits on the left and the text on the right.
+  // `md:[&>*:first-child]:order-2` keeps the first DOM child (the text) in
+  // column 2 on md+, and `_textIsRight` nudges that text column flush-right.
   const _textIsRight = side === "left";
 
   // Stagger settings — keep transforms small (≤16 px) to avoid layout jitter.

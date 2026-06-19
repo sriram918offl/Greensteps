@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     citations = buildCitations(chunks);
     context = buildContext(chunks);
   } catch (e) {
-    console.error("similarity search failed", e);
+    logger.error("chat.similarity_search_failed", { messageLen: message.length }, e);
   }
 
   // Persist user message + create conversation if signed in
@@ -128,7 +128,7 @@ ${message}`;
             },
           });
         } catch (e) {
-          console.error("persist assistant message failed", e);
+          logger.error("chat.persist_message_failed", { conversationId: convo.id }, e);
         }
       }
       controller.close();

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { generateText } from "@/lib/gemini";
 import { RATE_LIMITS, identifierFromRequest, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { localModerate } from "@/lib/moderation";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -44,7 +45,7 @@ Use IPCC, EPA and IEA-aligned estimates. Be realistic — single-digit savings a
     const parsed = JSON.parse(cleaned);
     return NextResponse.json(parsed);
   } catch (e) {
-    console.error("simulate error", e);
+    logger.error("simulate.scenario_failed", { promptLen: prompt.length }, e);
     return NextResponse.json({
       title: "Custom scenario",
       description: prompt,

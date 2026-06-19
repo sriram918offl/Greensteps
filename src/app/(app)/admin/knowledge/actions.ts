@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { indexDocument } from "@/lib/rag";
+import { logger } from "@/lib/logger";
 
 export async function addDocument(formData: FormData) {
   await requireAdmin();
@@ -19,7 +20,7 @@ export async function addDocument(formData: FormData) {
   try {
     await indexDocument(doc.id, content);
   } catch (e) {
-    console.error("Embedding failed", e);
+    logger.error("knowledge.embedding_failed", { documentId: doc.id }, e);
   }
 
   revalidatePath("/admin/knowledge");

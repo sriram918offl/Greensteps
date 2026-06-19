@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
 import { PERCAPITA_TONS_YR } from "@/lib/factors";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   try {
     return await renderOg(calc);
   } catch (e) {
-    console.error("OG image generation failed:", (e as Error).message);
+    logger.error("og.render_failed", { slug }, e);
     return new Response(
       JSON.stringify({ error: "OG image unavailable", monthly: Math.round(calc.totalCo2), grade: calc.grade }),
       { status: 503, headers: { "Content-Type": "application/json" } },
