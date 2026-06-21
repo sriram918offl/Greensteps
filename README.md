@@ -2,10 +2,20 @@
 
 > CO₂ is invisible. We make it obvious.
 
-**Built for the Google Carbon Footprint Awareness Challenge.**
+**Built for the Hack2skill "Virtual Prompt Wars" challenge (in association with Google for Developers).**
 
 Most carbon-tracking apps are private SaaS dashboards aimed at people who already care. They optimize for the *committed*.
 GreenSteps optimizes for the *uninformed* — turning a stranger into someone who knows, shares, and pledges in under 90 seconds.
+
+---
+
+## 🧭 Chosen vertical & persona
+
+**Vertical — Sustainability & Climate Action**, delivered as a *smart, dynamic awareness assistant* rather than a passive dashboard.
+
+**Primary persona — "the uninformed citizen."** Someone who has never calculated their footprint, assumes climate is somebody else's problem, and will give a new tool about 90 seconds before bouncing. Every decision in the product is tuned to convert *this* person — not the already-committed sustainability enthusiast.
+
+**Why the persona drives the design:** awareness only scales when the experience meets a stranger where they are — no signup, an instant payoff, locally-relevant numbers, and a result worth sharing. To convert that stranger the assistant has to be *smart about context* (where you live, how you live) and *dynamic* (it reasons over your specific inputs), or the moment is lost.
 
 ---
 
@@ -34,7 +44,7 @@ GreenSteps optimizes for the *uninformed* — turning a stranger into someone wh
 
 ### 🟢 The "aha moment" is the hero feature
 Numbers don't move people. **Comparisons do.** Every result page converts your monthly CO₂ into:
-- 🍔 Beef burgers
+- 🍔 Chicken burgers
 - ✈️ MUM→DEL flights
 - 🌳 Trees needed to offset
 - 👖 Pairs of new jeans
@@ -82,6 +92,22 @@ Public Gemini-powered chat with pgvector similarity search over IPCC / IEA / EPA
 
 ---
 
+## 🧠 Approach & logic — context-aware decision-making
+
+The brief asks for *logical decision-making based on user context*. GreenSteps makes context-driven decisions at **five** points, not just a single chat box — each is a real branch in the code, unit-tested, and degrades gracefully when an external dependency is down:
+
+1. **Localized emission engine.** The same lifestyle produces a wildly different footprint depending on *where you are*. The calculator branches on the user's country/city to select the correct grid factor (India `0.82` vs EU `0.231` kg CO₂/kWh — a 2× swing) *before* any number is shown. Generic calculators skip this and are simply wrong for 1.4 billion Indians.
+
+2. **Relatable-comparison selector.** Given the user's computed kg CO₂, the comparison generator decides *which* real-world equivalents to surface (chicken burgers, MUM→DEL flights, trees-to-offset, Netflix hours…) and scales each to their exact figure — turning an abstract number into something screenshot-worthy.
+
+3. **RAG assistant with graceful fallback.** The chat assistant embeds the question, runs a pgvector similarity search, and *decides per query* whether the retrieved passages clear a `0.45` relevance threshold. Above it → answer **with inline citations**; below it → answer from general knowledge **without hedging**. It never dead-ends on the user.
+
+4. **What-if simulator.** Free-text lifestyle changes ("what if I switch to an EV in Mumbai?") are reasoned into structured savings (kg/month, ₹/yr, payback months), with a deterministic fallback scenario if the model is unavailable.
+
+5. **Hybrid moderation engine.** Every public pledge passes a 3-tier decision — **allow** (publish instantly) · **hold** (hide for human review) · **block** (reject) — evaluated across *all* visible fields, and failing **safe to "hold"** whenever the classifier is unsure or unreachable.
+
+---
+
 ## 🏗️ Architecture
 
 ### Stack
@@ -92,7 +118,7 @@ Public Gemini-powered chat with pgvector similarity search over IPCC / IEA / EPA
 | Backend | Next.js Server Actions, Edge-compatible API Routes |
 | Database | PostgreSQL (Neon) + **pgvector** extension |
 | ORM | Prisma 5 |
-| AI | Gemini 1.5 Flash (chat, OG-image, scenarios), `text-embedding-004` (768-dim) |
+| AI | Gemini 2.5 Flash (chat, scenarios, bill OCR), `gemini-embedding-001` → 768-dim (Matryoshka-truncated) |
 | Auth | Clerk (optional — public layer needs no auth) |
 | Deploy | Vercel + Neon |
 
@@ -127,7 +153,7 @@ The awareness layer reaches anyone. The power-user layer retains the converted.
 User question (any visitor)
       │
       ▼
-[Gemini text-embedding-004] ──► 768-dim vector
+[Gemini gemini-embedding-001] ──► 768-dim vector
       │
       ▼
 pgvector cosine similarity   ("Embedding"."embedding" <=> query)
@@ -136,7 +162,7 @@ pgvector cosine similarity   ("Embedding"."embedding" <=> query)
 Top 5 chunks (joined with Document for title/source)
       │
       ▼
-Gemini 1.5 Flash (streamed) with citations
+Gemini 2.5 Flash (streamed) with citations
       │
       ▼
 Response streams back; first line is JSON {citations} for inline source UI
@@ -263,6 +289,17 @@ npm run db:studio    # open Prisma Studio
 - **Vehicle factors** — DEFRA 2023 + ICCT India
 - **Diet** — Poore & Nemecek (2018), *Science*
 - **Comparisons** — IPCC AR6, Levi's LCA (jeans), various peer-reviewed sources
+
+---
+
+## 📌 Assumptions
+
+- **Awareness beats tracking.** We assume the highest-leverage problem is converting the *uninformed*, so the core experience is public and signup-free; the authenticated tracker exists only to retain users who convert.
+- **Emission factors are point-in-time constants.** Grid and per-capita figures (CEA, EPA eGRID, EEA, IEA, Our World in Data) are embedded as constants and assumed stable for the submission window — real grids shift slowly.
+- **Decision-useful estimates, not certified accounting.** Outputs are approximations meant to drive behaviour change, not audited carbon ledgers.
+- **Calculator input is taken at face value.** Abuse surfaces (pledges, chat) are rate-limited and moderated, but self-reported lifestyle inputs are not adversarially validated.
+- **India-first, English-first.** Copy and localization lead with India and English; the data model supports more countries/cities and is seeded for five Indian metros.
+- **Credentials supplied at deploy.** Gemini, Neon (Postgres + pgvector) and Clerk keys are configured via environment variables; the public awareness layer itself needs no user auth.
 
 ---
 
